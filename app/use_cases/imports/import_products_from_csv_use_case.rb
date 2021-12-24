@@ -48,7 +48,8 @@ module Imports
             description: row["description"],
             shipping_category_id: shipping_category.id,
             available_on: row["availability_date"],
-            price: row["price"]
+            price: row["price"],
+            stores: Spree::Store.all
           )
 
           product.master.stock_items.first.update!(count_on_hand: row["stock_total"])
