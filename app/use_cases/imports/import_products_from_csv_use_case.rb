@@ -23,11 +23,24 @@ module Imports
     def import_csv
       record_errors = []
 
+      categories = create_category_taxonomy
+      categories_taxon =
+        Spree::Taxon.where(name: I18n.t('spree.taxonomy_categories_name'))
+          .first_or_create!
+
       parsed_csv.each.with_index(1) do |row, index|
+        cateogry_name = row[COLUMN_POSITIONS[:category]]
+        taxon = nil
+        if cateogry_name
+          taxon = categories_taxon.children.where(name: cateogry_name).first_or_create!
+          taxon.taxonomy = categories
+          taxon.save!
+        end
+
         next if product_exists?(row[COLUMN_POSITIONS[:name]])
 
         shipping_category = find_or_create_shipping_category('Default')
-        create_product(row, index, shipping_category, record_errors)
+        create_product(row, index, shipping_category, record_errors, taxon)
       end
 
       update_product_import(record_errors)
@@ -47,7 +60,7 @@ module Imports
       end
     end
 
-    def create_product(row, index, shipping_category, record_errors)
+    def create_product(row, index, shipping_category, record_errors, taxon)
       begin
         name = row[COLUMN_POSITIONS[:name]]
         Spree::Product.transaction do
@@ -59,6 +72,11 @@ module Imports
             available_on: Time.current,
             price: row[COLUMN_POSITIONS[:price]]
           )
+
+          if taxon
+            product.taxons << taxon
+            product.save!
+          end
 
           product.master.stock_items.first.update!(count_on_hand: 0)
         end
@@ -73,6 +91,16 @@ module Imports
 
     def product_exists?(name)
       Spree::Product.where(name: name).exists?
+    end
+
+    def create_category_taxonomy
+      taxonomy =
+        { 
+          name: I18n.t('spree.taxonomy_categories_name'),
+          store: Spree::Store.default 
+        }
+
+      Spree::Taxonomy.where(taxonomy).first_or_create!
     end
 
     def product_import
