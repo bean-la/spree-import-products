@@ -2,11 +2,10 @@ class CreateProductsFromCsvJob < ApplicationJob
   queue_as :default
 
   def perform(product_import)
-    return if product_import.data_file.blank?
+    return if product_import.csv_file.blank?
 
     Imports::ImportProductsFromCsvUseCase.call(
       params: {
-        # file: product_import.id,
         product_import_id: product_import.id
       }
     )
