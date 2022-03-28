@@ -55,7 +55,7 @@ module Imports
     end
 
     def parsed_csv
-      CSV.parse(file.download.lines.drop(IGNORE_LINES).join("\r\n"), headers: true, encoding: 'UTF-8', col_sep: ",", skip_blanks: true).delete_if do |row|
+      CSV.parse(product_import.csv_file.lines.drop(IGNORE_LINES).join("\r\n"), headers: true, encoding: 'UTF-8', col_sep: ",", skip_blanks: true).delete_if do |row|
         row.to_hash.values.all?(&:blank?)
       end
     end
