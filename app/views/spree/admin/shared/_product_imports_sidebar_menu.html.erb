@@ -1,6 +1,6 @@
 <% if can? :admin, Spree::ProductImport %>
-  <ul class="nav nav-sidebar">
-    <%= tab Spree::ProductImport, url: spree.admin_product_imports_url, icon: 'upload', label: "Product Imports" %>
-    <%= tab Spree::ProductImport, url: spree.admin_product_import_details_url, label: "Product Imports Details" %>
+  <ul class="nav nav-sidebar border-bottom">
+    <%= link_to "Product Imports", spree.admin_product_imports_url, class: 'heading-medium px-4 py-2' %>
+    <%= link_to "Product Imports Details", spree.admin_product_import_details_url, class: 'heading-medium px-4 py-2' %>
   </ul>
 <% end %>
