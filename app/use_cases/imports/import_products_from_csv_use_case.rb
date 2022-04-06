@@ -36,8 +36,6 @@ module Imports
                           row[COLUMN_POSITIONS[:category3]]
         ].filter{|category| category } 
 
-        category_name = row[COLUMN_POSITIONS[:category1]]
-
         taxons = []
         category_names.each do |category_name|
           taxon = categories_taxon.children.where("name ILIKE ? AND parent_id = ? AND taxonomy_id = ?",
