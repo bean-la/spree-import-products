@@ -53,10 +53,13 @@ module Imports
           taxons.push(taxon)
         end
 
-        next if product_exists?(row[COLUMN_POSITIONS[:name]])
-
         shipping_category = find_or_create_shipping_category('Default')
-        create_product(row, index, shipping_category, record_errors, taxons)
+        product = Spree::Product.where(name: row[COLUMN_POSITIONS[:name]])
+        if product.exists?
+          update_product(product.first, row, index, shipping_category, record_errors, taxons)
+        else
+          create_product(row, index, shipping_category, record_errors, taxons)
+        end
       end
 
       update_product_import(record_errors)
@@ -85,6 +88,17 @@ module Imports
     def parsed_csv
       CSV.parse(product_import.csv_file.lines.drop(IGNORE_LINES).join("\r\n"), headers: true, encoding: 'UTF-8', col_sep: ",", skip_blanks: true).delete_if do |row|
         row.to_hash.values.all?(&:blank?)
+      end
+    end
+
+    def update_product(product, row, index, shipping_category, record_errors, taxons)
+      begin
+        product.description = row[COLUMN_POSITIONS[:description]]
+        product.price = row[COLUMN_POSITIONS[:price]]
+        product.taxons = taxons
+        product.save!
+      rescue ActiveRecord::RecordInvalid => exception
+        record_errors.push({ row_index: index, error_info: exception.record.errors.messages })
       end
     end
 
