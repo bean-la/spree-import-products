@@ -8,6 +8,7 @@ module Spree
 
       def new
         @product_import = Spree::ProductImport.new
+        @product_imports = Spree::ProductImport.all.order("created_at DESC")
       end
 
       def create
@@ -19,7 +20,8 @@ module Spree
 
         CreateProductsFromCsvJob.perform_later(@product_import)
 
-        redirect_to admin_product_import_details_path
+
+        redirect_to admin_product_imports_path
       end
 
       def import_details
