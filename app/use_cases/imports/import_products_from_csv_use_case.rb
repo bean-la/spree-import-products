@@ -8,8 +8,10 @@ module Imports
     COLUMN_POSITIONS = {
       name: 0,
       price: 1,
-      category: 2,
-      description: 3 
+      category1: 2,
+      category2: 3,
+      category3: 4,
+      description: 5
     }
 
     arguments :file, :product_import_id
@@ -29,21 +31,49 @@ module Imports
           .first_or_create!
 
       parsed_csv.each.with_index(1) do |row, index|
-        cateogry_name = row[COLUMN_POSITIONS[:category]]
-        taxon = nil
-        if cateogry_name
-          taxon = categories_taxon.children.where(name: cateogry_name).first_or_create!
-          taxon.taxonomy = categories
+        category_names = [row[COLUMN_POSITIONS[:category1]], 
+                          row[COLUMN_POSITIONS[:category2]], 
+                          row[COLUMN_POSITIONS[:category3]]
+        ].filter{|category| category } 
+
+        category_name = row[COLUMN_POSITIONS[:category1]]
+
+        taxons = []
+        category_names.each do |category_name|
+          taxon = categories_taxon.children.where("name ILIKE ? AND parent_id = ? AND taxonomy_id = ?",
+            category_name, categories_taxon.id, categories.id).first_or_create do |taxon|
+              taxon.name = category_name
+              taxon.taxonomy = categories
+              taxon.parent = categories_taxon
+              taxon.set_permalink
+              while permalink_is_not_unique(taxon) do
+                append_integer(taxon)
+              end
+          end
+
           taxon.save!
+          taxons.push(taxon)
         end
 
         next if product_exists?(row[COLUMN_POSITIONS[:name]])
 
         shipping_category = find_or_create_shipping_category('Default')
-        create_product(row, index, shipping_category, record_errors, taxon)
+        create_product(row, index, shipping_category, record_errors, taxons)
       end
 
       update_product_import(record_errors)
+    end
+          
+    def permalink_is_not_unique(taxon)
+      prev_taxon = Spree::Taxon.where(permalink: taxon.permalink, parent_id: taxon.parent_id, taxonomy_id: taxon.taxonomy_id)
+      prev_taxon.exists? && prev_taxon.first.id != taxon.id
+    end
+
+    def append_integer(taxon)
+      num_match = /_(\d+)$/.match(taxon.permalink)
+      taxon.permalink = !num_match.nil? && num_match[1] ? 
+        taxon.permalink.gsub(/_(\d+)$/, '_' + (num_match[1].to_i + 1).to_s) :
+        taxon.permalink = taxon.permalink + '_1'
     end
 
     def update_product_import(record_errors)
@@ -60,7 +90,7 @@ module Imports
       end
     end
 
-    def create_product(row, index, shipping_category, record_errors, taxon)
+    def create_product(row, index, shipping_category, record_errors, taxons)
       begin
         name = row[COLUMN_POSITIONS[:name]]
         Spree::Product.transaction do
@@ -73,8 +103,8 @@ module Imports
             price: row[COLUMN_POSITIONS[:price]]
           )
 
-          if taxon
-            product.taxons << taxon
+          if taxons.length
+            product.taxons << taxons
             product.save!
           end
 
